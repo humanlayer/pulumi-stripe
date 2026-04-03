@@ -137,3 +137,23 @@ dist
 # Vite logs files
 vite.config.js.timestamp-*
 vite.config.ts.timestamp-*
+
+# Riptide artifacts (cloud-synced)
+.humanlayer/tasks/
+
+# Build artifacts
+bin/
+
+# Go build cache
+.cache/
+
+# Pulumi
+.pulumi/
+
+# IDE
+.idea/
+.vscode/
+*.swp
+
+# OS
+.DS_Store
