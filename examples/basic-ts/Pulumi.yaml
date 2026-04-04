@@ -1,0 +1,3 @@
+name: stripe-basic-example
+runtime: nodejs
+description: Basic example of using the Stripe Pulumi provider

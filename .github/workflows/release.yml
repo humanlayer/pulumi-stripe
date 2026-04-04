@@ -1,0 +1,101 @@
+name: Release
+
+on:
+  push:
+    tags:
+      - 'v*'
+
+jobs:
+  release:
+    runs-on: ubuntu-latest
+    permissions:
+      contents: write
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Set up Go
+        uses: actions/setup-go@v5
+        with:
+          go-version: '1.23'
+
+      - name: Set up Node.js
+        uses: actions/setup-node@v4
+        with:
+          node-version: '20'
+          registry-url: 'https://registry.npmjs.org'
+
+      - name: Install Pulumi CLI
+        uses: pulumi/actions@v5
+
+      - name: Install pulumictl
+        run: |
+          curl -L https://github.com/pulumi/pulumictl/releases/download/v0.0.46/pulumictl-v0.0.46-linux-amd64.tar.gz | tar xz
+          sudo mv pulumictl /usr/local/bin/
+
+      - name: Get version from tag
+        id: version
+        run: echo "VERSION=${GITHUB_REF#refs/tags/v}" >> $GITHUB_OUTPUT
+
+      - name: Build and package provider (all platforms)
+        run: |
+          VERSION=${{ steps.version.outputs.VERSION }}
+          mkdir -p dist
+
+          # Pulumi expects: pulumi-resource-{name}-v{version}-{os}-{arch}.tar.gz
+          # Inside the tarball: pulumi-resource-{name}
+
+          for PLATFORM in "linux amd64" "linux arm64" "darwin amd64" "darwin arm64"; do
+            set -- $PLATFORM
+            OS=$1
+            ARCH=$2
+
+            echo "Building for $OS/$ARCH..."
+            GOOS=$OS GOARCH=$ARCH go build -C provider \
+              -ldflags "-X github.com/humanlayer/pulumi-stripe/provider/pkg/version.Version=$VERSION" \
+              -o ../dist/pulumi-resource-stripe \
+              ./cmd/pulumi-resource-stripe
+
+            # Create tarball with expected naming
+            tar -czvf dist/pulumi-resource-stripe-v${VERSION}-${OS}-${ARCH}.tar.gz \
+              -C dist pulumi-resource-stripe
+
+            rm dist/pulumi-resource-stripe
+          done
+
+          ls -la dist/
+
+      - name: Generate and build SDK
+        run: |
+          make tfgen
+          make build_nodejs
+          cd sdk/nodejs && npm install && npm run build
+
+      - name: Verify SDK contents
+        run: |
+          echo "Contents of sdk/nodejs/bin/:"
+          ls -la sdk/nodejs/bin/
+          if [ ! -f sdk/nodejs/bin/index.js ]; then
+            echo "ERROR: bin/index.js not found"
+            exit 1
+          fi
+          if [ ! -f sdk/nodejs/bin/index.d.ts ]; then
+            echo "ERROR: bin/index.d.ts not found"
+            exit 1
+          fi
+
+      - name: Package SDK
+        run: cd sdk/nodejs && npm pack
+
+      - name: Create GitHub Release
+        uses: softprops/action-gh-release@v1
+        with:
+          files: |
+            dist/*.tar.gz
+            sdk/nodejs/*.tgz
+          generate_release_notes: true
+
+      - name: Publish to npm
+        if: github.repository == 'humanlayer/pulumi-stripe'
+        run: cd sdk/nodejs && npm publish --tolerate-republish
+        env:
+          NODE_AUTH_TOKEN: ${{ secrets.NPM_TOKEN }}
