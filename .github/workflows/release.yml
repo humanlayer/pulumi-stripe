@@ -71,6 +71,19 @@ jobs:
           make build_nodejs
           cd sdk/nodejs && npm install && npm run build
 
+      - name: Verify SDK contents
+        run: |
+          echo "Contents of sdk/nodejs/bin/:"
+          ls -la sdk/nodejs/bin/
+          if [ ! -f sdk/nodejs/bin/index.js ]; then
+            echo "ERROR: bin/index.js not found"
+            exit 1
+          fi
+          if [ ! -f sdk/nodejs/bin/index.d.ts ]; then
+            echo "ERROR: bin/index.d.ts not found"
+            exit 1
+          fi
+
       - name: Package SDK
         run: cd sdk/nodejs && npm pack
 
@@ -84,6 +97,6 @@ jobs:
 
       - name: Publish to npm
         if: github.repository == 'humanlayer/pulumi-stripe'
-        run: cd sdk/nodejs && npm publish --access public
+        run: cd sdk/nodejs && npm publish --tolerate-republish
         env:
           NODE_AUTH_TOKEN: ${{ secrets.NPM_TOKEN }}

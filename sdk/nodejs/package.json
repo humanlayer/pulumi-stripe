@@ -1,6 +1,6 @@
 {
     "name": "@humanlayer/pulumi-stripe",
-    "version": "0.0.1",
+    "version": "0.1.0",
     "description": "A Pulumi provider for managing Stripe resources",
     "keywords": [
         "pulumi",
@@ -15,8 +15,17 @@
         "url": "https://github.com/humanlayer/pulumi-stripe.git"
     },
     "license": "MIT",
+    "main": "bin/index.js",
+    "types": "bin/index.d.ts",
+    "files": [
+        "bin"
+    ],
     "scripts": {
-        "build": "tsc"
+        "build": "tsc",
+        "prepack": "npm run build"
+    },
+    "publishConfig": {
+        "access": "public"
     },
     "dependencies": {
         "@pulumi/pulumi": "^3.142.0"

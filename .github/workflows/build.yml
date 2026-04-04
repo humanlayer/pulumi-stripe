@@ -46,6 +46,23 @@ jobs:
 
       - name: Build TypeScript SDK
         run: cd sdk/nodejs && npm install && npm run build
+        env:
+          CI: true
+
+      - name: Verify SDK contents
+        run: |
+          echo "Contents of sdk/nodejs/bin/:"
+          ls -la sdk/nodejs/bin/
+          if [ ! -f sdk/nodejs/bin/index.js ]; then
+            echo "ERROR: bin/index.js not found"
+            exit 1
+          fi
+          if [ ! -f sdk/nodejs/bin/index.d.ts ]; then
+            echo "ERROR: bin/index.d.ts not found"
+            exit 1
+          fi
 
       - name: Type-check examples
         run: cd examples/basic-ts && npm install && npx tsc --noEmit
+        env:
+          CI: true

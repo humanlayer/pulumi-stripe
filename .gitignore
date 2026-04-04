@@ -157,3 +157,4 @@ bin/
 
 # OS
 .DS_Store
+.humanlayer/
