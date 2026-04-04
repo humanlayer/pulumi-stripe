@@ -13,13 +13,55 @@ npm install @humanlayer/pulumi-stripe
 ```typescript
 import * as stripe from "@humanlayer/pulumi-stripe";
 
+// Create a product
 const product = new stripe.Product("my-product", {
-    name: "My Product",
+    name: "My SaaS",
     description: "A product managed with Pulumi",
 });
 
+// Create a price for the product
+const price = new stripe.Price("my-price", {
+    product: product.id,
+    currency: "usd",
+    unitAmount: 1999, // $19.99
+    recurring: {
+        interval: "month",
+    },
+});
+
+// Create a coupon
+const coupon = new stripe.Coupon("launch-discount", {
+    percentOff: 25,
+    duration: "repeating",
+    durationInMonths: 3,
+});
+
+// Create a webhook endpoint
+const webhook = new stripe.WebhookEndpoint("my-webhook", {
+    url: "https://api.example.com/stripe/webhooks",
+    enabledEvents: [
+        "customer.subscription.created",
+        "customer.subscription.deleted",
+        "invoice.paid",
+    ],
+});
+
 export const productId = product.id;
+export const priceId = price.id;
 ```
+
+## Available Resources
+
+- `Product` - Products and services
+- `Price` - Pricing for products
+- `Customer` - Customer records
+- `Coupon` - Discount coupons
+- `PromotionCode` - Promotion codes for coupons
+- `WebhookEndpoint` - Webhook endpoints
+- `TaxRate` - Tax rates
+- `ShippingRate` - Shipping rates
+- `BillingMeter` - Usage-based billing meters
+- `EntitlementsFeature` - Entitlement features
 
 ## Configuration
 
