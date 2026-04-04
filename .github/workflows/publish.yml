@@ -14,9 +14,11 @@ jobs:
     steps:
       - uses: actions/checkout@v4
 
-      - name: Get version from package.json
-        id: version
-        run: echo "VERSION=$(jq -r .version sdk/nodejs/package.json)" >> $GITHUB_OUTPUT
+      - name: Save package.json metadata
+        id: pkg
+        run: |
+          echo "VERSION=$(jq -r .version sdk/nodejs/package.json)" >> $GITHUB_OUTPUT
+          cp sdk/nodejs/package.json /tmp/package.json.bak
 
       - name: Set up Go
         uses: actions/setup-go@v5
@@ -41,15 +43,19 @@ jobs:
         run: make tfgen
 
       - name: Build provider
-        run: make provider VERSION=${{ steps.version.outputs.VERSION }}
+        run: make provider VERSION=${{ steps.pkg.outputs.VERSION }}
 
       - name: Generate TypeScript SDK
         run: make build_nodejs
 
-      - name: Fix SDK version
+      - name: Restore package.json metadata
         run: |
           cd sdk/nodejs
-          npm pkg set version=${{ steps.version.outputs.VERSION }}
+          # Preserve generated pulumi block, restore everything else from committed version
+          PULUMI_BLOCK=$(jq '.pulumi' package.json)
+          cp /tmp/package.json.bak package.json
+          jq --argjson pulumi "$PULUMI_BLOCK" '.pulumi = $pulumi' package.json > package.json.tmp
+          mv package.json.tmp package.json
 
       - name: Build TypeScript SDK
         run: cd sdk/nodejs && npm install && npm run build
