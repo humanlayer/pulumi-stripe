@@ -36,34 +36,33 @@ jobs:
         id: version
         run: echo "VERSION=${GITHUB_REF#refs/tags/v}" >> $GITHUB_OUTPUT
 
-      - name: Build provider (all platforms)
+      - name: Build and package provider (all platforms)
         run: |
           VERSION=${{ steps.version.outputs.VERSION }}
           mkdir -p dist
 
-          # Linux amd64
-          GOOS=linux GOARCH=amd64 go build -C provider \
-            -ldflags "-X github.com/humanlayer/pulumi-stripe/provider/pkg/version.Version=$VERSION" \
-            -o ../dist/pulumi-resource-stripe-v${VERSION}-linux-amd64 \
-            ./cmd/pulumi-resource-stripe
+          # Pulumi expects: pulumi-resource-{name}-v{version}-{os}-{arch}.tar.gz
+          # Inside the tarball: pulumi-resource-{name}
 
-          # Linux arm64
-          GOOS=linux GOARCH=arm64 go build -C provider \
-            -ldflags "-X github.com/humanlayer/pulumi-stripe/provider/pkg/version.Version=$VERSION" \
-            -o ../dist/pulumi-resource-stripe-v${VERSION}-linux-arm64 \
-            ./cmd/pulumi-resource-stripe
+          for PLATFORM in "linux amd64" "linux arm64" "darwin amd64" "darwin arm64"; do
+            set -- $PLATFORM
+            OS=$1
+            ARCH=$2
 
-          # Darwin amd64
-          GOOS=darwin GOARCH=amd64 go build -C provider \
-            -ldflags "-X github.com/humanlayer/pulumi-stripe/provider/pkg/version.Version=$VERSION" \
-            -o ../dist/pulumi-resource-stripe-v${VERSION}-darwin-amd64 \
-            ./cmd/pulumi-resource-stripe
+            echo "Building for $OS/$ARCH..."
+            GOOS=$OS GOARCH=$ARCH go build -C provider \
+              -ldflags "-X github.com/humanlayer/pulumi-stripe/provider/pkg/version.Version=$VERSION" \
+              -o ../dist/pulumi-resource-stripe \
+              ./cmd/pulumi-resource-stripe
 
-          # Darwin arm64
-          GOOS=darwin GOARCH=arm64 go build -C provider \
-            -ldflags "-X github.com/humanlayer/pulumi-stripe/provider/pkg/version.Version=$VERSION" \
-            -o ../dist/pulumi-resource-stripe-v${VERSION}-darwin-arm64 \
-            ./cmd/pulumi-resource-stripe
+            # Create tarball with expected naming
+            tar -czvf dist/pulumi-resource-stripe-v${VERSION}-${OS}-${ARCH}.tar.gz \
+              -C dist pulumi-resource-stripe
+
+            rm dist/pulumi-resource-stripe
+          done
+
+          ls -la dist/
 
       - name: Generate and build SDK
         run: |
@@ -91,7 +90,7 @@ jobs:
         uses: softprops/action-gh-release@v1
         with:
           files: |
-            dist/*
+            dist/*.tar.gz
             sdk/nodejs/*.tgz
           generate_release_notes: true
 
