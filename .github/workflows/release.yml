@@ -108,6 +108,14 @@ jobs:
             exit 1
           fi
 
+      - name: Copy metadata to bin for publishing
+        run: |
+          cd sdk/nodejs
+          cp package.json README.md ./bin/
+          cp ../../LICENSE ./bin/
+          echo "Contents of sdk/nodejs/bin/ after copy:"
+          ls -la ./bin/
+
       - name: Verify provider archive contents
         run: |
           for archive in dist/*.tar.gz; do
@@ -115,18 +123,18 @@ jobs:
           done
 
       - name: Package SDK
-        run: cd sdk/nodejs && npm pack
+        run: cd sdk/nodejs/bin && npm pack
 
       - name: Create GitHub Release
         uses: softprops/action-gh-release@v1
         with:
           files: |
             dist/*.tar.gz
-            sdk/nodejs/*.tgz
+            sdk/nodejs/bin/*.tgz
           generate_release_notes: true
 
       - name: Publish to npm
         if: github.repository == 'humanlayer/pulumi-stripe'
-        run: cd sdk/nodejs && npm publish --tolerate-republish
+        run: cd sdk/nodejs/bin && npm publish --tolerate-republish
         env:
           NODE_AUTH_TOKEN: ${{ secrets.NPM_TOKEN }}
