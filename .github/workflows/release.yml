@@ -36,6 +36,21 @@ jobs:
         id: version
         run: echo "VERSION=${GITHUB_REF#refs/tags/v}" >> $GITHUB_OUTPUT
 
+      - name: Save committed SDK metadata
+        id: sdk
+        run: |
+          echo "VERSION=$(jq -r .version sdk/nodejs/package.json)" >> $GITHUB_OUTPUT
+          cp sdk/nodejs/package.json /tmp/package.json.bak
+
+      - name: Verify tag matches SDK version
+        run: |
+          if [ "${{ steps.version.outputs.VERSION }}" != "${{ steps.sdk.outputs.VERSION }}" ]; then
+            echo "Tag version does not match sdk/nodejs/package.json"
+            echo "tag=${{ steps.version.outputs.VERSION }}"
+            echo "sdk=${{ steps.sdk.outputs.VERSION }}"
+            exit 1
+          fi
+
       - name: Build and package provider (all platforms)
         run: |
           VERSION=${{ steps.version.outputs.VERSION }}
@@ -68,7 +83,17 @@ jobs:
         run: |
           make tfgen
           make build_nodejs
-          cd sdk/nodejs && npm install && npm run build
+
+      - name: Restore package.json metadata
+        run: |
+          cd sdk/nodejs
+          PULUMI_BLOCK=$(jq '.pulumi' package.json)
+          cp /tmp/package.json.bak package.json
+          jq --argjson pulumi "$PULUMI_BLOCK" '.pulumi = $pulumi' package.json > package.json.tmp
+          mv package.json.tmp package.json
+
+      - name: Build TypeScript SDK
+        run: cd sdk/nodejs && npm install && npm run build
 
       - name: Verify SDK contents
         run: |
@@ -82,6 +107,12 @@ jobs:
             echo "ERROR: bin/index.d.ts not found"
             exit 1
           fi
+
+      - name: Verify provider archive contents
+        run: |
+          for archive in dist/*.tar.gz; do
+            tar -tzf "$archive" | grep -qx 'pulumi-resource-stripe'
+          done
 
       - name: Package SDK
         run: cd sdk/nodejs && npm pack
