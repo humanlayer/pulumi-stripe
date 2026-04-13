@@ -1,15 +1,10 @@
-name: Publish to npm
+name: Validate npm package
 
 on:
   workflow_dispatch:
-  push:
-    branches:
-      - main
-    paths:
-      - "sdk/nodejs/package.json"
 
 jobs:
-  publish:
+  validate:
     runs-on: ubuntu-latest
     steps:
       - uses: actions/checkout@v4
@@ -80,7 +75,5 @@ jobs:
         env:
           CI: true
 
-      - name: Publish to npm
-        run: cd sdk/nodejs && npm publish --tolerate-republish
-        env:
-          NODE_AUTH_TOKEN: ${{ secrets.NPM_TOKEN }}
+      - name: Pack npm package
+        run: cd sdk/nodejs && npm pack --dry-run
