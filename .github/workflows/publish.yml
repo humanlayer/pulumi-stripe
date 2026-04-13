@@ -70,10 +70,18 @@ jobs:
             exit 1
           fi
 
+      - name: Copy metadata to bin for publishing
+        run: |
+          cd sdk/nodejs
+          cp package.json README.md ./bin/
+          cp ../../LICENSE ./bin/
+          echo "Contents of sdk/nodejs/bin/ after copy:"
+          ls -la ./bin/
+
       - name: Type-check examples
         run: cd examples/basic-ts && npm install && npx tsc --noEmit
         env:
           CI: true
 
       - name: Pack npm package
-        run: cd sdk/nodejs && npm pack --dry-run
+        run: cd sdk/nodejs/bin && npm pack --dry-run
